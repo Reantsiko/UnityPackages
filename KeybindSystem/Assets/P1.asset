@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9d00bdf25df2d4d478bcfe2c4acd95e5, type: 3}
+  m_Name: P1
+  m_EditorClassIdentifier: 
+  player: P1Input
+  playerInput:
+  - command: 1
+    keyCode: 119
+  - command: 2
+    keyCode: 115
+  defaultKeybindings: {fileID: 11400000, guid: 8f81b9b78a603d944a3c640326790f56, type: 2}
+  overlappingKeybindsChecker:
+  - {fileID: 11400000, guid: df3fbaf3eac916e49962021d8d6263f7, type: 2}
