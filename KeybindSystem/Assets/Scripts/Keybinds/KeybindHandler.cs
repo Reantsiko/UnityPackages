@@ -1,13 +1,12 @@
 ﻿using System.Collections;
+using System.Linq;
 using UnityEngine.UI;
 using UnityEngine;
+using TMPro;
 
 /*
- * The buttons that will be used to set the keybindings need to have the exact same name as the command string
- * of the keybind.
- * eg: command in the structure == forward ==> button's name must be forward
- * On the button's in the inspector under "On Click()" press on the + sign and drag the object
- * on which this script is placed. Add the function SetButton and then drag the button in the slot under it.
+ * On the buttons in the inspector under "On Click()" press on the + sign and drag the object
+ * on which this script is placed. Select the function SetButton and then drag the button into the slot under it.
  * You can also add a tag to the button, this has to be the same as the scriptable object's Player string,
  * to differentiate between keybindings in local co-op.
  * 
@@ -16,20 +15,26 @@ using UnityEngine;
 
 public class KeybindHandler : MonoBehaviour
 {
+    [Tooltip("Put all of the created objects for keybindings here.")]
     public Keybindings[] playerKeybinds = null;
-    [SerializeField]private Button[] _keyBindButtons = null;
-    [SerializeField]private KeyCode[] _keysToIgnore = null;
-
-    private Coroutine _listeningForInput = null;
+    public Slider[] mouseSensitivity;
+    [Tooltip("Input here all of the prefabs that came with this package for the keybind changes in game.")]
+    [SerializeField] private TMP_Text[] keyBindText = null;
+    [Tooltip("Use this array to select which keys shouldn't be used a keybinds.")]
+    [SerializeField] private KeyCode[] keysToIgnore = null;
+    private Coroutine listeningForInput = null;
 
     void Start()
     {
         for (int i = 0; i < playerKeybinds.Length; i++)
         {
             playerKeybinds[i].LoadKeys();
-            playerKeybinds[i].defaultKeybindings.FillDictionary();
+            playerKeybinds[i].GetDefault().FillDictionary();
+            if (i < mouseSensitivity.Length)
+                mouseSensitivity[i].value = playerKeybinds[i].GetMouseSensitivity();
         }
-        SetButtonText();
+        
+        SetGameObjectTexts(true);
     }
     /*  -----------------------------------------------
         PUBLIC METHODS
@@ -40,22 +45,34 @@ public class KeybindHandler : MonoBehaviour
     */
     public void SetButton(Button pressedButton)
     {
-        var keybindCommand = pressedButton.GetComponent<KeybindCommand>();
+        var keybindCommand = pressedButton.GetComponentInParent<KeybindCommand>();
         if (!keybindCommand)
         {
-            Debug.LogError("No KeybindCommand script on " + pressedButton.name);
+            Debug.LogError($"No KeybindCommand script on {pressedButton.name}");
             return;
         }
 
-        var textComponent = pressedButton.GetComponentInChildren<Text>(); //change this depending on how your button is set up
+        //change this depending on how your button is set up
+        var textComponent = pressedButton.GetComponentInChildren<TMP_Text>(); 
         if (!textComponent)
         {
             Debug.LogError("No text on button");
             return;
         }
         textComponent.text = "Press a key...";
-        _listeningForInput = StartCoroutine(ListenForKeyInput(keybindCommand.GetCommand(), pressedButton.tag));
+        listeningForInput = StartCoroutine(ListenForKeyInput(keybindCommand.GetCommand(), pressedButton.tag));
     }
+
+    public void SaveAll()
+    {
+        for (int i = 0; i < playerKeybinds.Length; i++)
+        {
+            playerKeybinds[i].SetMouseSensitivity(mouseSensitivity[i].value);
+            playerKeybinds[i].SaveAll();
+        }
+        
+    }
+
     /*
      * Use this method on buttons, or add it to the end of the IEnumerator ListenForKeyInput
      * to save automatically.
@@ -65,16 +82,27 @@ public class KeybindHandler : MonoBehaviour
         for (int i = 0; i < playerKeybinds.Length; i++)
             playerKeybinds[i].SaveKeys();
     }
+    /*
+     * Reset all of the keybindings to there default if a default set exists.
+    */
     public void ResetKeys()
     {
         for (int i = 0; i < playerKeybinds.Length; i++)
             playerKeybinds[i].ResetKeys();
-        SetButtonText();
+        SetGameObjectTexts(false);
+    }
+
+    public void SaveMouseSensitivity(int player)
+    {
+        playerKeybinds[player].SetMouseSensitivity(mouseSensitivity[player].value);
     }
 
     /*  -----------------------------------------------
         PRIVATE METHODS
         -----------------------------------------------*/
+    /*
+     * Listener method to change keybindings.
+    */
     private IEnumerator ListenForKeyInput(KeybindEnum command, string p)
     {
         while (!Input.GetKeyDown(KeyCode.Escape))
@@ -86,20 +114,23 @@ public class KeybindHandler : MonoBehaviour
                     if (IgnoreInput(keyValue))
                         continue;
                     GetCorrectPlayer(p, command, keyValue);
-                    SetButtonText();
-                    _listeningForInput = null;
+                    SetGameObjectTexts(false);
+                    listeningForInput = null;
                     yield break;
                 }
             }
             yield return new WaitForSecondsRealtime(0);
         }
-        SetButtonText();
-        _listeningForInput = null;
+        SetGameObjectTexts(false);
+        listeningForInput = null;
     }
 
+    /*
+     * Returns true if an inputted key needs to be ignored. 
+    */
     private bool IgnoreInput(KeyCode keyValue)
     {
-        foreach (var ignore in _keysToIgnore)
+        foreach (var ignore in keysToIgnore)
             if (keyValue == ignore)
                 return true;
         return false;
@@ -107,28 +138,46 @@ public class KeybindHandler : MonoBehaviour
 
     private void GetCorrectPlayer(string p, KeybindEnum command, KeyCode keyValue)
     {
-        for (int i = 0; i < playerKeybinds.Length; i++)
-        {
-            if (p == playerKeybinds[i].GetPlayerIdentity())
-                playerKeybinds[i].SetKey(command, keyValue);
-        }
+        var temp = playerKeybinds.ToList().FindIndex(playerIndex => string.Compare(playerIndex.GetPlayerIdentity(), p) == 0);
+        if (temp != -1)
+            playerKeybinds[temp].SetKey(command, keyValue);
     }
-
-    private void SetButtonText()
+    /*
+     * Updates the UI
+     * This method can use some improvement.
+    */
+    private void SetGameObjectTexts(bool setCommandTexts)
     {
         for (int i = 0; i < playerKeybinds.Length; i++)
         {
             var playerInput = playerKeybinds[i].GetPlayerInput();
-            foreach (var b in _keyBindButtons)
+            var tempList = keyBindText.ToList().Where(t => t.tag == playerKeybinds[i].GetPlayerIdentity()).ToList();
+
+            if (tempList.Count == 0)
             {
-                foreach (var input in playerInput)
+                Debug.LogError($"Length of found Text items is: {tempList.Count}");
+                return;
+            }
+
+            for (int j = 0; j < tempList.Count; j++)
+            {
+                var command = tempList[j].GetComponent<KeybindCommand>().GetCommand();
+                var buttonText = tempList[j].GetComponentInChildren<Button>().GetComponentInChildren<TMP_Text>();
+                var comPos = FindCorrectCommand(command, playerInput);
+                if (buttonText.CompareTag(playerKeybinds[i].GetPlayerIdentity()))
                 {
-                    if (input.command == b.GetComponent<KeybindCommand>().GetCommand() && b.CompareTag(playerKeybinds[i].GetPlayerIdentity()))
-                    {
-                        b.GetComponentInChildren<Text>().text = playerKeybinds[i].GetKeyAsString(b.name);
-                    }
+                    if (comPos > -1 && setCommandTexts)
+                        tempList[j].text = $"{playerInput[comPos].commandName}:";
+                    buttonText.text = playerKeybinds[i].GetKeyAsString(command);
                 }
             }
+            if (i < mouseSensitivity.Length)
+                mouseSensitivity[i].value = playerKeybinds[i].GetMouseSensitivity();
         }
     }
+
+    /*
+     * Method to help organize the UI.
+    */
+    private int FindCorrectCommand(KeybindEnum toFind, InputKeys[] searchArea) => searchArea.ToList().FindIndex(a => a.command == toFind);
 }

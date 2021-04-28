@@ -4,8 +4,8 @@
 */
 public class KeybindCommand : MonoBehaviour
 {
-    [SerializeField] private KeybindEnum _command = KeybindEnum.none;
+    [SerializeField] private KeybindEnum command = KeybindEnum.none;
 
-    public void SetCommand(KeybindEnum toSet) { _command = toSet; }
-    public KeybindEnum GetCommand() { return _command; }
+    public void SetCommand(KeybindEnum toSet) { command = toSet; }
+    public KeybindEnum GetCommand() { return command; }
 }

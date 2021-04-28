@@ -14,10 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   player: P2Input
   playerInput:
-  - command: 1
-    keyCode: 264
-  - command: 2
-    keyCode: 258
-  defaultKeybindings: {fileID: 11400000, guid: fcdb5eda7f368ef438d156d0abfb37ef, type: 2}
+  - commandName: Forward
+    command: 1
+    keyCode: 273
+  - commandName: Back
+    command: 2
+    keyCode: 274
+  useMouseSensitivity: 0
+  sensitivity: 2
+  defaultKeybindings: {fileID: 11400000, guid: e55b7344c491804458efa4f7933edab0, type: 2}
   overlappingKeybindsChecker:
   - {fileID: 11400000, guid: 08a988173027951488f0beeedbe2af8b, type: 2}
+  - {fileID: 11400000}

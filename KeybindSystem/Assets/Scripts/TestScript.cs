@@ -7,9 +7,9 @@ public class TestScript : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKey(playerKeybinds.GetKeyCode("forward")))
+        if (Input.GetKey(playerKeybinds.GetKeyCode(KeybindEnum.forward)))
             Move(Vector3.forward);
-        else if (Input.GetKey(playerKeybinds.GetKeyCode("back")))
+        else if (Input.GetKey(playerKeybinds.GetKeyCode(KeybindEnum.back)))
             Move(Vector3.back);
     }
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -8,22 +9,20 @@ public struct InputKeys
     public string commandName;
     public KeybindEnum command;
     public KeyCode keyCode;
-    public KeyCode modifierKeyCode;
 }
 
 [CreateAssetMenu(fileName = "Keybindings", menuName = "Keybindings")]
 public class Keybindings : ScriptableObject
 {
     [Tooltip("Input a string ID for the player. This string will be used to differentiate between players in local co-op")]
-    [SerializeField] private string _player = null;
-    [SerializeField] private InputKeys[] _playerInput = null;
-    [Tooltip("Change to true in case you want players to be able to use modifiers such as shift, ctrl, alt")]
-    [SerializeField] private bool _useModifier = false;
-    [SerializeField] private KeyCode[] _modifierKeyCodes = null;
-    public Keybindings defaultKeybindings = null;
+    [SerializeField] private string player = null;
+    [SerializeField] private InputKeys[] playerInput = null;
+    [SerializeField] private bool useMouseSensitivity;
+    [SerializeField] private float sensitivity = 2f;
+    [SerializeField] private Keybindings defaultKeybindings = null;
     [Tooltip("Input all the other KeyBindingsScriptableObject that you want to be cross checked for overlapping input.")]
-    [SerializeField] private Keybindings[] _overlappingKeybindsChecker = null;
-    private Dictionary<string, KeyCode> _keyBindingsDictionary = null;
+    [SerializeField] private Keybindings[] overlappingKeybindsChecker = null;
+    private Dictionary<KeybindEnum, KeyCode> keyBindingsDictionary = null;
 
     /*  -----------------------------------------------
            PUBLIC METHODS
@@ -31,38 +30,34 @@ public class Keybindings : ScriptableObject
     /*
      * Use this method with Input.GetKey(...);
     */
-    public KeyCode GetKeyCode(string command) { return _keyBindingsDictionary[command]; }
+    public KeyCode GetKeyCode(KeybindEnum command) => keyBindingsDictionary[command];
     /*
      * Use this method to set the value of keys as text. eg in options menu
     */
-    public string GetKeyAsString(string variableName) { return _keyBindingsDictionary[variableName].ToString(); }
+    public string GetKeyAsString(KeybindEnum command) => keyBindingsDictionary[command].ToString();
     /*
      * Used to differentiate between multiple players in local co-op
     */
-    public string GetPlayerIdentity() { return _player; }
-    public InputKeys[] GetPlayerInput() { return _playerInput; }
+    public string GetPlayerIdentity() => player;
+    public InputKeys[] GetPlayerInput() => playerInput; 
+    public void SetMouseSensitivity(float toSet) =>  sensitivity = toSet;
+    public float GetMouseSensitivity() => sensitivity;
+    public Keybindings GetDefault() => defaultKeybindings;
     /*
      * Will change the KeyCode in the array and dictionary.
     */
-    public void SetKey(KeybindEnum commandName, KeyCode toSet, bool reset = false)
+    public void SetKey(KeybindEnum command, KeyCode toSet, bool reset = false)
     {
-        if (!_keyBindingsDictionary.ContainsKey(commandName.ToString()))
+        var commandPosition = playerInput.ToList().FindIndex(k => k.command == command);
+        if (keyBindingsDictionary.ContainsKey(command) == false || commandPosition <= -1)
         {
-            Debug.LogError("Command name: " + commandName + " does not exist.");
+            Debug.LogError($"Error when trying to set the key of command {command}.");
             return;
         }
-
-        for (int i = 0; i < _playerInput.Length; i++)
-        {
-            if (_playerInput[i].command == commandName)
-            {
-                if (!reset)
-                    CheckOverlappingKeybinds(toSet);
-                _playerInput[i].keyCode = toSet;
-                _keyBindingsDictionary[commandName.ToString()] = toSet;
-                return;
-            }
-        }
+        if (!reset)
+            CheckOverlappingKeybinds(toSet);
+        playerInput[commandPosition].keyCode = toSet;
+        keyBindingsDictionary[command] = toSet;
     }
     /*
      * Resets all keybindings to the default set you created.
@@ -75,8 +70,7 @@ public class Keybindings : ScriptableObject
             return;
         }
 
-        foreach (var keybind in _playerInput)
-            SetKey(keybind.command, defaultKeybindings.GetKeyCode(keybind.command.ToString()), true);
+        playerInput.ToList().ForEach(ik => SetKey(ik.command, defaultKeybindings.GetKeyCode(ik.command), true));
     }
     /*
      * Saving and loading of the keybindings through PlayerPrefs.
@@ -85,31 +79,51 @@ public class Keybindings : ScriptableObject
     */
     public void SaveKeys()
     {
-        PlayerPrefs.SetString("Keybinds " + _player, "Saved");
-        foreach (var keybind in _playerInput)
-            PlayerPrefs.SetInt(keybind.command + _player, keybind.keyCode.GetHashCode());
-        if (_keyBindingsDictionary == null)
+        PlayerPrefs.SetString("Keybinds " + player, "Saved");
+        playerInput.ToList().ForEach(k => PlayerPrefs.SetInt(k.command + player, k.keyCode.GetHashCode()));
+        if (keyBindingsDictionary == null)
             FillDictionary();
+        PlayerPrefs.Save();
+    }
+
+    public void SaveMouseSensitivity()
+    {
+        if (useMouseSensitivity)
+        {
+            PlayerPrefs.SetFloat($"MS {player}", sensitivity);
+            PlayerPrefs.Save();
+        }
+    }
+
+    public void SaveAll()
+    {
+        SaveKeys();
+        SaveMouseSensitivity();
+        PlayerPrefs.Save();
     }
     public void LoadKeys()
     {
-        if (!PlayerPrefs.HasKey("Keybinds " + _player))
+        if (!PlayerPrefs.HasKey($"Keybinds { player}"))
         {
-            SaveKeys();
+            SaveAll();
+            Debug.Log("Created new save keys");
             return;
         }
-        for (int i = 0; i < _playerInput.Length; i++)
-            _playerInput[i].keyCode = (KeyCode)PlayerPrefs.GetInt(_playerInput[i].command + _player);
-        if (_keyBindingsDictionary == null)
+
+        if (useMouseSensitivity && PlayerPrefs.HasKey($"MS {player}"))
+            sensitivity = PlayerPrefs.GetFloat($"MS {player}");
+        for (int i = 0; i < playerInput.Length; i++)
+            playerInput[i].keyCode = (KeyCode)PlayerPrefs.GetInt(playerInput[i].command + player);
+        if (keyBindingsDictionary == null)
             FillDictionary();
     }
     public void FillDictionary()
     {
-        if (_keyBindingsDictionary == null)
+        if (keyBindingsDictionary == null)
         {
-            _keyBindingsDictionary = new Dictionary<string, KeyCode>();
-            foreach (var input in _playerInput)
-                _keyBindingsDictionary.Add(input.command.ToString(), input.keyCode);
+            keyBindingsDictionary = new Dictionary<KeybindEnum, KeyCode>();
+            foreach (var input in playerInput)
+                keyBindingsDictionary.Add(input.command, input.keyCode);
         }
     }
     /*  -----------------------------------------------
@@ -117,18 +131,16 @@ public class Keybindings : ScriptableObject
         -----------------------------------------------*/
     private void CheckOverlappingKeybinds(KeyCode keyCode)
     {
-        if (_overlappingKeybindsChecker == null) { return; }
+        if (overlappingKeybindsChecker == null) { return; }
 
-        for (int i = 0; i < _overlappingKeybindsChecker.Length; i++)
+        for (int i = 0; i < overlappingKeybindsChecker.Length; i++)
         {
-            for (int j = 0; j < _overlappingKeybindsChecker[i]._playerInput.Length; j++)
+            var index = overlappingKeybindsChecker[i].playerInput.ToList().FindIndex(k => k.keyCode == keyCode);
+            if (index > -1)
             {
-                if (_overlappingKeybindsChecker[i]._playerInput[j].keyCode == keyCode)
-                {
-                    var command = _overlappingKeybindsChecker[i]._playerInput[j].command;
-                    _overlappingKeybindsChecker[i].SetKey(command, KeyCode.None, true); //3 param has to be set to true here, otherwise infinite loop
-                    return;
-                }
+                var command = overlappingKeybindsChecker[i].playerInput[index].command;
+                overlappingKeybindsChecker[i].SetKey(command, KeyCode.None, true); //3rd param has to be set to true here, otherwise infinite loop
+                return;
             }
         }
     }

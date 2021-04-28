@@ -7,5 +7,12 @@ public enum KeybindEnum
     forward,
     back,
     left,
-    right
+    right,
+    jump,
+    crouch,
+    pickup,
+    throwitem,
+    shield,
+    strength,
+    menu
 }
