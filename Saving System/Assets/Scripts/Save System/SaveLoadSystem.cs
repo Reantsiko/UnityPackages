@@ -1,9 +1,9 @@
 ﻿using UnityEngine;
 using System.IO;
-using System.Runtime.Serialization;  
 using System.Runtime.Serialization.Formatters.Binary;
 using System;
-public static class FileHandler
+[Serializable]
+public static class SaveLoadSystem
 {
     /*
         Variables
@@ -13,29 +13,11 @@ public static class FileHandler
     /*
         Public Methods
     */
-    public static bool CreateFile(string toWrite, string fileName)
-    {
-        if (string.IsNullOrEmpty(toWrite)) return false;
-        try
-        {
-            using (StreamWriter file = new StreamWriter(FilePath(fileName)))
-            {
-                file.Write(toWrite);
-                file.Close();
-            }
-            Debug.Log($"Path to file: {FilePath(fileName)}");
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-    public static bool SerializeData<T>(T toSerialize)
+    public static bool SerializeData<T>(T toSerialize, string fileName)
     {
         try
         {
-            Stream s = File.Open(FilePath("test.dat"), FileMode.Create);
+            Stream s = File.Open(FilePath(fileName), FileMode.Create);
             BinaryFormatter b = new BinaryFormatter();
             b.Serialize(s, toSerialize);
             s.Close();
@@ -47,13 +29,14 @@ public static class FileHandler
             return false;
         }
     }
-    public static void SerializeData(string toSerialize)
+    public static void SerializeMonoBehaviour<T>(T toSerialize, string fileName)
     {
         try
         {
-            Stream s = File.Open(FilePath("test.dat"), FileMode.Create);
+            var json = Serializer<T>.ToJson(toSerialize);
+            Stream s = File.Open(FilePath(fileName), FileMode.Create);
             BinaryFormatter b = new BinaryFormatter();
-            b.Serialize(s, toSerialize);
+            b.Serialize(s, json);
             s.Close();
         }
         catch (Exception exception)
@@ -61,11 +44,11 @@ public static class FileHandler
             Debug.LogError($"{exception.Message}");
         }
     }
-    public static string DeSerializeData()
+    public static string DeSerializeData(string fileName)
     {
         try
         {
-            Stream s = File.Open(FilePath("test.dat"), FileMode.Open);
+            Stream s = File.Open(FilePath(fileName), FileMode.Open);
             BinaryFormatter b = new BinaryFormatter();
             var deSerialized = b.Deserialize(s).ToString();
             return deSerialized;
@@ -91,22 +74,10 @@ public static class FileHandler
             return default;
         }
     }
-    public static string ReadFile(string fileName)
+    public static void DeSerializeOverwrite<T>(string fileName, T toOverwrite)
     {
-        try
-        {
-            using (StreamReader streamReader = new StreamReader(FilePath(fileName)))
-            {
-                var result = streamReader.ReadToEnd();
-                streamReader.Close();
-                return result;
-            }
-        }
-        catch (Exception exception)
-        {
-            Debug.LogError(exception.Message);
-            return null;
-        }
+        var response = DeSerializeData(fileName);
+        Serializer<T>.CreateFromJsonOverwrite(response, toOverwrite);
     }
     //---------------------------------------------------
     /*

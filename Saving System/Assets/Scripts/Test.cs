@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [System.Serializable]
-public class Test : Serializer<Test>
+public class Test : MonoBehaviour
 {
     /*
     	Variables
@@ -14,11 +14,10 @@ public class Test : Serializer<Test>
     	Public Methods
     */
     public string GetTestString() => testString;
-    public void Serialize() => FileHandler.SerializeData(this);
-    public void DeSerialize()
+    //public void Serialize() => FileHandler.SerializeData(this);
+    private void Start()
     {
-        var tmp = FileHandler.DeSerializeData<Test>();
-        testString = tmp.GetTestString();
+        //SaveLoadSystem.DeSerializeOverwrite("Test.dat", this);
     } 
     //---------------------------------
     /*

@@ -2,12 +2,13 @@
 using System.Collections.Generic;
 using UnityEngine;
 [System.Serializable]
-public class TestMono : SerializerMono<TestMono>
+public class Test2 : MonoBehaviour
 {
     /*
         Variables
     */
-    [SerializeField] string testString = null;
+    [SerializeField] private int number;
+    [SerializeField] private string text;
     //---------------------------------------------------
     /*
         Public Methods
@@ -19,10 +20,14 @@ public class TestMono : SerializerMono<TestMono>
     */
     private void Start()
     {
-        //CreateFromJsonOverwrite(FileHandler.ReadFile("TestMono.json"), this);
-        //FileHandler.CreateFile(ToJson(this), "TestMono.json");
-        //FileHandler.SerializeData(ToJson(this));
-        CreateFromJsonOverwrite(FileHandler.DeSerializeData(), this);
+        SaveLoadSystem.SerializeMonoBehaviour(this, "Test2.dat");
+    }
+
+    // Update is called once per frame
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+            SaveLoadSystem.DeSerializeOverwrite("Test2.dat", this);
     }
     //---------------------------------------------------
 }
