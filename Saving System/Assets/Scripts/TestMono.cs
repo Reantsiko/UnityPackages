@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+[System.Serializable]
 public class TestMono : SerializerMono<TestMono>
 {
     /*
@@ -19,8 +19,10 @@ public class TestMono : SerializerMono<TestMono>
     */
     private void Start()
     {
-        CreateFromJsonOverwrite(FileHandler.ReadFile("TestMono.json"), this);
-        FileHandler.CreateFile(ToJson(this), "TestMono.json");
+        //CreateFromJsonOverwrite(FileHandler.ReadFile("TestMono.json"), this);
+        //FileHandler.CreateFile(ToJson(this), "TestMono.json");
+        //FileHandler.SerializeData(ToJson(this));
+        CreateFromJsonOverwrite(FileHandler.DeSerializeData(), this);
     }
     //---------------------------------------------------
 }
